@@ -1,6 +1,6 @@
 const util = require('util');
 const fs = require('fs');
-const uuid = require('uuid');
+const { v4: uuidv4 } = require('uuid');
 const { parse } = require('path');
 
 const readFileAsync = util.promisify(fs.readFile);
@@ -11,7 +11,7 @@ class Store {
         return readFileAsync('./db/db.json','utf8')
     }
     markDown(notes){
-        return writeFileAsync('./db/db.json',JSON.stringify(notes))
+        return writeFileAsync('./db/db.json',JSON.stringify(notes, null, 4))
     }
     retrieveNotes(){
         return this.read().then((notes) => {
@@ -19,26 +19,28 @@ class Store {
             try {
                 parsedNotes = [].concat(JSON.parse(notes))
             }
-            catch (err) {
+            catch (error) {
                 parsedNotes =[]
             }
             return parsedNotes;
         })
     }
     appendNote(notes){
-        const title = notes.title;
-        const text = notes.text;
+        const {title, text} = notes
+        
 
         if (!title || !text) {
             throw new Error ('needs title and notes')
         }
-        const nextNote = { title, text, id: uuid()}
+        const nextNote = { title, text, id: uuidv4()}
         return this.retrieveNotes().then((notes) => [
             ...notes, nextNote
         ]).then((updateNotes) => this.markDown(updateNotes))
         .then(()=> nextNote);
     }
-    deleteNote(){
+    deleteNote(id){
+        return this.retrieveNotes().then((notes) => notes.filter((note) => note.id !== id))
+        .then((filteredNotes) => this.markDown(filteredNotes))
 
     }
 };
